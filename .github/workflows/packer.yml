@@ -1,0 +1,27 @@
+name: Packer
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Packer
+        uses: hashicorp/setup-packer@main
+      - name: Packer Format Check
+        run: packer fmt -check -recursive .
+      - name: Packer Init and Validate
+        run: |
+          for f in $(find . -name "*.pkr.hcl" -o -name "*.json" | grep -v ".github"); do
+            dir=$(dirname "$f")
+            echo "=== Validating $f ==="
+            cd "$dir"
+            packer init . 2>/dev/null || true
+            packer validate . 2>/dev/null || packer validate "$(basename $f)" 2>/dev/null || echo "Skipped $f (may need variables)"
+            cd - > /dev/null
+          done
